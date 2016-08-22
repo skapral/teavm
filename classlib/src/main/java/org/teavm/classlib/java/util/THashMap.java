@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/*
+ /*
  *  Licensed to the Apache Software Foundation (ASF) under one or more
  *  contributor license agreements.  See the NOTICE file distributed with
  *  this work for additional information regarding copyright ownership.
@@ -29,16 +29,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.teavm.classlib.java.util;
 
 import java.util.Arrays;
 import java.util.ConcurrentModificationException;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.teavm.classlib.java.io.TSerializable;
 import org.teavm.classlib.java.lang.*;
 import org.teavm.javascript.spi.Rename;
 
 public class THashMap<K, V> extends TAbstractMap<K, V> implements TCloneable, TSerializable {
+
     transient int elementCount;
     transient HashEntry<K, V>[] elementData;
     transient int modCount;
@@ -46,7 +48,84 @@ public class THashMap<K, V> extends TAbstractMap<K, V> implements TCloneable, TS
     final float loadFactor;
     int threshold;
 
+    @Override
+    public boolean replace(K key, V value, V newValue) {
+        if (containsKey(key) && TObjects.equals(get(key), value)) {
+            put(key, newValue);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public V replace(K key, V value) {
+        if (containsKey(key)) {
+            return put(key, value);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+        V v = get(key);
+        if (v == null) {
+            V newValue = mappingFunction.apply(key);
+            if (newValue != null) {
+                put(key, newValue);
+            }
+            return newValue;
+        }
+        return v;
+    }
+
+    @Override
+    public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        V v = get(key);
+        if (v != null) {
+            V oldValue = v;
+            V newValue = remappingFunction.apply(key, oldValue);
+            if (newValue != null) {
+                return put(key, newValue);
+            } else {
+                return remove(key);
+            }
+        }
+        return v;
+    }
+
+    @Override
+    public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        V oldValue = get(key);
+        V newValue = remappingFunction.apply(key, oldValue);
+        if (oldValue != null) {
+            if (newValue != null) {
+                return put(key, newValue);
+            } else {
+                return remove(key);
+            }
+        } else if (newValue != null) {
+            return put(key, newValue);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        V oldValue = get(key);
+        V newValue = (oldValue == null) ? value
+                : remappingFunction.apply(oldValue, value);
+        if (newValue == null) {
+            return remove(key);
+        } else {
+            return put(key, newValue);
+        }
+    }
+
     static class HashEntry<K, V> extends TMapEntry<K, V> {
+
         final int origKeyHash;
 
         HashEntry<K, V> next;
@@ -72,7 +151,8 @@ public class THashMap<K, V> extends TAbstractMap<K, V> implements TCloneable, TS
         }
     }
 
-    private static class AbstractMapIterator<K, V>  {
+    private static class AbstractMapIterator<K, V> {
+
         private int position;
         int expectedModCount;
         HashEntry<K, V> futureEntry;
@@ -144,9 +224,9 @@ public class THashMap<K, V> extends TAbstractMap<K, V> implements TCloneable, TS
         }
     }
 
-
     private static class EntryIterator<K, V> extends AbstractMapIterator<K, V>
             implements TIterator<TMap.Entry<K, V>> {
+
         EntryIterator(THashMap<K, V> map) {
             super(map);
         }
@@ -159,6 +239,7 @@ public class THashMap<K, V> extends TAbstractMap<K, V> implements TCloneable, TS
     }
 
     private static class KeyIterator<K, V> extends AbstractMapIterator<K, V> implements TIterator<K> {
+
         KeyIterator(THashMap<K, V> map) {
             super(map);
         }
@@ -171,6 +252,7 @@ public class THashMap<K, V> extends TAbstractMap<K, V> implements TCloneable, TS
     }
 
     private static class ValueIterator<K, V> extends AbstractMapIterator<K, V> implements TIterator<V> {
+
         ValueIterator(THashMap<K, V> map) {
             super(map);
         }
@@ -183,6 +265,7 @@ public class THashMap<K, V> extends TAbstractMap<K, V> implements TCloneable, TS
     }
 
     static class HashMapEntrySet<K, V> extends TAbstractSet<TMap.Entry<K, V>> {
+
         private final THashMap<K, V> associatedMap;
 
         public HashMapEntrySet(THashMap<K, V> hm) {
@@ -229,8 +312,8 @@ public class THashMap<K, V> extends TAbstractMap<K, V> implements TCloneable, TS
         private static boolean valuesEq(TMap.Entry<?, ?> entry, TMap.Entry<?, ?> oEntry) {
             return entry != null
                     && (entry.getValue() == null
-                    ? oEntry.getValue() == null
-                    : areEqualValues(entry.getValue(), oEntry.getValue()));
+                            ? oEntry.getValue() == null
+                            : areEqualValues(entry.getValue(), oEntry.getValue()));
         }
 
         @Override
@@ -272,13 +355,10 @@ public class THashMap<K, V> extends TAbstractMap<K, V> implements TCloneable, TS
      * Constructs a new {@code HashMap} instance with the specified capacity and
      * load factor.
      *
-     * @param capacity
-     *            the initial capacity of this hash map.
-     * @param loadFactor
-     *            the initial load factor.
-     * @throws IllegalArgumentException
-     *                when the capacity is less than zero or the load factor is
-     *                less or equal to zero.
+     * @param capacity the initial capacity of this hash map.
+     * @param loadFactor the initial load factor.
+     * @throws IllegalArgumentException when the capacity is less than zero or
+     * the load factor is less or equal to zero.
      */
     public THashMap(int capacity, float loadFactor) {
         if (capacity >= 0 && loadFactor > 0) {
@@ -409,20 +489,29 @@ public class THashMap<K, V> extends TAbstractMap<K, V> implements TCloneable, TS
     public TSet<K> keySet() {
         if (cachedKeySet == null) {
             cachedKeySet = new TAbstractSet<K>() {
-                @Override public boolean contains(Object object) {
+                @Override
+                public boolean contains(Object object) {
                     return containsKey(object);
                 }
-                @Override public int size() {
+
+                @Override
+                public int size() {
                     return THashMap.this.size();
                 }
-                @Override public void clear() {
+
+                @Override
+                public void clear() {
                     THashMap.this.clear();
                 }
-                @Override public boolean remove(Object key) {
+
+                @Override
+                public boolean remove(Object key) {
                     HashEntry<K, V> entry = THashMap.this.removeEntry(key);
                     return entry != null;
                 }
-                @Override public TIterator<K> iterator() {
+
+                @Override
+                public TIterator<K> iterator() {
                     return new KeyIterator<>(THashMap.this);
                 }
             };
@@ -586,16 +675,23 @@ public class THashMap<K, V> extends TAbstractMap<K, V> implements TCloneable, TS
     public TCollection<V> values() {
         if (cachedValues == null) {
             cachedValues = new TAbstractCollection<V>() {
-                @Override public boolean contains(Object object) {
+                @Override
+                public boolean contains(Object object) {
                     return containsValue(object);
                 }
-                @Override public int size() {
+
+                @Override
+                public int size() {
                     return THashMap.this.size();
                 }
-                @Override public void clear() {
+
+                @Override
+                public void clear() {
                     THashMap.this.clear();
                 }
-                @Override public TIterator<V> iterator() {
+
+                @Override
+                public TIterator<V> iterator() {
                     return new ValueIterator<>(THashMap.this);
                 }
             };

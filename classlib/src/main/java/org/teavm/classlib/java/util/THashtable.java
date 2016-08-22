@@ -33,6 +33,8 @@
 package org.teavm.classlib.java.util;
 
 import java.util.Arrays;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.teavm.classlib.java.io.TSerializable;
 import org.teavm.classlib.java.lang.TCloneNotSupportedException;
 import org.teavm.classlib.java.lang.TCloneable;
@@ -276,6 +278,83 @@ public class THashtable<K, V> extends TDictionary<K, V> implements TMap<K, V>,
         return new Entry[size];
     }
 
+    
+    @Override
+    public boolean replace(K key, V value, V newValue) {
+        if (containsKey(key) && TObjects.equals(get(key), value)) {
+            put(key, newValue);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public V replace(K key, V value) {
+        if (containsKey(key)) {
+            return put(key, value);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+        V v = get(key);
+        if (v == null) {
+            V newValue = mappingFunction.apply(key);
+            if (newValue != null) {
+                put(key, newValue);
+            }
+            return newValue;
+        }
+        return v;
+    }
+
+    @Override
+    public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        V v = get(key);
+        if (v != null) {
+            V oldValue = v;
+            V newValue = remappingFunction.apply(key, oldValue);
+            if (newValue != null) {
+                return put(key, newValue);
+            } else {
+                return remove(key);
+            }
+        }
+        return v;
+    }
+
+    @Override
+    public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        V oldValue = get(key);
+        V newValue = remappingFunction.apply(key, oldValue);
+        if (oldValue != null) {
+            if (newValue != null) {
+                return put(key, newValue);
+            } else {
+                return remove(key);
+            }
+        } else if (newValue != null) {
+            return put(key, newValue);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        V oldValue = get(key);
+        V newValue = (oldValue == null) ? value
+                : remappingFunction.apply(oldValue, value);
+        if (newValue == null) {
+            return remove(key);
+        } else {
+            return put(key, newValue);
+        }
+    }
+    
     @Override
     public synchronized void clear() {
         elementCount = 0;

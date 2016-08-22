@@ -15,6 +15,9 @@
  */
 package org.teavm.classlib.java.util;
 
+import java.util.function.BiFunction;
+import java.util.function.Function;
+
 /**
  *
  * @author Alexey Andreev
@@ -43,6 +46,19 @@ public interface TMap<K, V> {
     V put(K key, V value);
 
     V remove(Object key);
+    
+    
+    boolean replace(K k, V v, V v1);
+
+    V replace(K k, V v);
+
+    V computeIfAbsent(K k, Function<? super K, ? extends V> fnctn);
+
+    V computeIfPresent(K k, BiFunction<? super K, ? super V, ? extends V> bf);
+
+    V compute(K k, BiFunction<? super K, ? super V, ? extends V> bf);
+
+    V merge(K k, V v, BiFunction<? super V, ? super V, ? extends V> bf);
 
     void putAll(TMap<? extends K, ? extends V> m);
 
